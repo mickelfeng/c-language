@@ -1,0 +1,20 @@
+  
+  PHP c 扩展,调用php函数
+  
+   zval *argvs[2];
+   zval *func;
+   MAKE_STD_ZVAL(func);
+   MAKE_STD_ZVAL(argvs[0]);
+   MAKE_STD_ZVAL(argvs[1]);
+   ZVAL_LONG(argvs[0], 317);
+   ZVAL_STRING(argvs[1], "Lein's birthday is ",1);
+   ZVAL_STRING(func, "callme",1);
+   if (call_user_function(EG(function_table), NULL, func, &retval, 2, argvs) == SUCCESS) {
+      zval_dtor(&retval);
+   }
+   
+   
+function callme($day,$str)
+{
+        echo $str.": ".$day."/n";
+}
