@@ -1,0 +1,61 @@
+/*
+分别下载了php5.2.10和5.3.0版本的源码，查找到里面call_user_function(在ext/standard/basic_functions.c)的方法。
+在5.2.10版本里，call_user_function用的是标准的php 函数的写法，用zval类型来存储接收的参数，
+调用call_user_function_ex来执行用户的方法。如果调用不成功则分析是不是接收到的参数里有什么错误。
+*/
+
+int check_expire(INTERNAL_FUNCTION_PARAM){
+
+   time_t now=(long)time(NULL);
+   zval retval;
+   zval *argvs[1];
+   zval *func;
+  
+  	struct tm* tmp_time = (struct tm*)malloc(sizeof(struct tm));
+
+    //int expired;
+
+    strptime(EXPIRE_DATE,"%Y%m%d",tmp_time);
+    time_t expired = mktime(tmp_time);
+    printf("%ld\n",expired);
+    free(tmp_time);
+
+
+
+   //argvs=(zval*)malloc(sizeof(zval));  
+   MAKE_STD_ZVAL(func);
+   MAKE_STD_ZVAL(argvs[0]);
+
+   ZVAL_STRING(argvs[0], EXPIRE_DATE,0);
+
+   //MAKE_STD_ZVAL(argvs[1]);
+   //ZVAL_STRING(argvs[1], "Lein's birthday is ",1);
+   //return SUCCESS;
+   ZVAL_STRING(func, "md5",0);
+
+
+    if(func->type!=IS_STRING){
+                zend_error(E_ERROR,"function name must be a string");
+    }
+
+   //php_printf("类型是 IS_LONG，值是：%ld" , 22);
+   //php_error_docref(NULL TSRMLS_CC, E_WARNING, "No name given, person resource not created.");
+   //return 0;
+   //php_printf("FUNCTION是：%s\n" , Z_STRVAL_P(func));
+   //php_printf("time now is :%d",expired);
+   //ZVAL_STRINGL(argvs[0], EXPIRE_DATE, sizeof(EXPIRE_DATE), 1);
+
+   //call_user_function_ex(EG(function_table), NULL, func, &retval, 1, argvs, 0, EG(active_symbol_table));
+    call_user_function(EG(function_table), NULL, func, &retval, 1, argvs TSRMLS_CC);// == SUCCESS) {
+   	php_printf("类型是 IS_LONG，值是：%s" ,retval);
+   	   if(now > expired){//Z_LVAL(retval)){
+   	  	  zend_error(E_ERROR,'expired ,please buy the authorised system');
+   	   	  // php_printf("类型是 IS_LONG，值是：%ld" , Z_LVAL(retval));
+   	  }
+   	  //zval_dtor(argvs[0]);
+      zval_dtor(&retval);
+  // }else{
+  // 	  zend_error(E_ERROR,"putclub calls failed, if you want to solve this problem ,please connect the qq:446838006");
+  // }
+
+}
