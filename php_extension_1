@@ -219,3 +219,58 @@ if(thread_wrok("e",NULL,222,'this is str'))
 else echo "NO\n"; 
 ?> 
 
+===============================================================================================================
+
+/*
+ 一直就知道PHP是C写的，网上大部分实际应用消耗性能的模块就是由PHP的拓展C来重写的，网上曾经看过百度的一篇大话PHP性能 ，对此文看法很是赞同的。
+
+很早就相对PHP和C进行一个亲测的对比了，无奈当时对于Zend API不了解，现在本文就是亲自来测试一下C与PHP的差距。
+
+我想不好拿什么来测试，于是题目就是对一个大小为3000的数组进行冒泡排序，看时间。
+
+一共分为3种情况
+
+    C实现
+    PHP实现
+    PHP的C拓展，由PHP产生数组，然后交给C处理数据
+    http://blog.csdn.net/zyf837368104/article/details/8683420
+*/
+
+PHP_FUNCTION(bubble)
+{
+	zval *array;
+	zval **item;
+	if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,"a",&array)==FAILURE)
+	{
+		return;
+	}
+    int i;
+	int count;
+	count = zend_hash_num_elements(Z_ARRVAL_P(array));
+  	int j,temp;
+	int data[count];
+	zend_hash_internal_pointer_reset(Z_ARRVAL_P(array));
+    for(i=0;i<count;i++)
+    {	
+		zend_hash_get_current_data(Z_ARRVAL_P(array),(void**)&item);
+
+		data[i]=(int)Z_STRVAL_PP(item);
+		zend_hash_move_forward(Z_ARRVAL_P(array));
+    }
+    for(i=0;i<count;i++)
+    {
+        for(j=0;j<count-1-i;j++)
+        {
+            if(data[j] > data[j+1])
+            {
+                temp = data[j];
+                data[j] = data[j+1];
+                data[j+1] = temp;
+            }
+        }
+    }
+    for(i=0;i<count;i++)
+    {
+		php_printf("%d\n",data[i]);	
+	}
+}
