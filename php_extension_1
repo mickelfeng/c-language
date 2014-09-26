@@ -18,7 +18,7 @@ function callme($day,$str)
 {
         echo $str.": ".$day."/n";
 }
-=========================================================
+====================php 扩展调用 php 标准函数 及 操作全局变量=====================================
 
 PHP_FUNCTION(md52)
 {
@@ -80,4 +80,142 @@ PHP_FUNCTION(md52)
 echo md52('123qwe');
 
 ?>
-================================================================================
+==========================根据用户传入的参数调用用户函数的php扩展======================================================
+
+
+PHP_FUNCTION(thread_wrok)
+{
+    zval *cls=NULL,*zvalue=NULL,*z_method;
+ 
+ 
+    //---------------------------------------------------------
+    zval ***params=NULL;
+ 
+    int arg_count = ZEND_NUM_ARGS();
+ 
+    if (arg_count <1 ) {
+        WRONG_PARAM_COUNT;
+    }
+     
+    params = (zval ***) safe_emalloc(sizeof(zval **), arg_count, 0);
+ 
+    if (zend_get_parameters_array_ex(arg_count, params) == FAILURE) {
+        efree(params);
+        RETURN_FALSE;
+    }
+ 
+    z_method=*params[0];
+     
+    if(arg_count>1&¶ms[1])
+    {
+        cls=*params[1];
+    }
+ 
+    if ( Z_TYPE_P(z_method) != IS_STRING ) 
+    {
+        php_error_docref(NULL TSRMLS_CC, E_WARNING, "First param must be string");
+        RETURN_FALSE;
+    }
+ 
+ 
+    //---------------------------------------------------------
+    /*
+    char *method;
+    int method_len;
+    if (
+        zend_parse_parameters( ZEND_NUM_ARGS() TSRMLS_CC, "s|o", &method, &method_len, &cls) == FAILURE
+    )
+    {
+        RETURN_FALSE;
+    }
+ 
+    MAKE_STD_ZVAL(z_method);
+ 
+    ZVAL_STRING(z_method, method, 1);
+     
+    if (method && zend_hash_find(Z_ARRVAL_P(method_records), method, method_len + 1, (void**)&zvalue) != FAILURE) 
+    {
+        RETURN_FALSE;
+    }
+ 
+    */
+ 
+    //---------------------------------------------------------
+ 
+    zval *retval_ptr;
+    arg_count = arg_count-2>0?arg_count-2:0;
+    if(Z_TYPE_P(cls) == IS_OBJECT || Z_TYPE_P(cls) == IS_STRING )
+    {
+ 
+ 
+        if (call_user_function_ex(EG(function_table), &cls  , z_method, &retval_ptr, arg_count, arg_count?params+2:NULL , 0, NULL TSRMLS_CC) == SUCCESS) {
+            if (retval_ptr) {       
+                zval_ptr_dtor(&retval_ptr);
+            }
+        } else {
+            php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to call class method: %s()", Z_STRVAL_P(z_method));
+            RETURN_FALSE;
+        }
+    }else{
+        if (call_user_function_ex(CG(function_table), NULL, z_method, &retval_ptr, arg_count, arg_count?params+2:NULL , 0, NULL TSRMLS_CC) == SUCCESS )
+        {
+            if (retval_ptr) {       
+                zval_ptr_dtor(&retval_ptr);
+            }
+        } else {
+            php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to call %s()", Z_STRVAL_P(z_method));
+            RETURN_FALSE;
+        }
+    }
+ 
+    //efree(z_method);
+ 
+    RETURN_TRUE;
+}
+
+
+
+call:
+
+<?php 
+$br = (php_sapi_name() == "cli")? "":"<br>"; 
+  
+if(!extension_loaded('threadwork')) { 
+    dl('threadwork.' . PHP_SHLIB_SUFFIX); 
+} 
+class a{ 
+    function e($a1=0,$a2="") 
+    {    
+        echo "method e,$a1,$a2\n"; 
+    }    
+} 
+function e($a1=0,$a2="") 
+{ 
+    echo "function e,$a1,$a2\n"; 
+} 
+  
+$a=new a(); 
+if(thread_wrok("e",$a)) 
+{ 
+    echo "a-> OK\n"; 
+} 
+else echo "NO\n"; 
+  
+if(thread_wrok("e","a",date("Y-m-d H:i:s"))) 
+{ 
+    echo "&a->e OK\n"; 
+} 
+  
+if(thread_wrok("e",&$a,date("Y-m-d H:i:s"))) 
+{ 
+    echo "&a->e OK\n"; 
+} 
+thread_wrok($a); 
+  
+if(thread_wrok("e",NULL,222,'this is str')) 
+{ 
+    echo "e OK\n"; 
+} 
+else echo "NO\n"; 
+?> 
+
