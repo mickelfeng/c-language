@@ -1,0 +1,176 @@
+
+Valgrind 已经在 Linux 应用程序开发社区中广泛用来调试应用程序。它尤其擅长发现内存管理的问题。它可以检查程序运行时的内存泄漏问题。这个工具目前正由 Julian Seward 进行开发，并由 Paul Mackerras 移植到了 Power 架构上。
+
+要安装 Valgrind，请从 Valgrind 的 Web 站点上下载源代码（参阅 参考资料）。切换到 Valgrind 目录，并执行下面的命令：
+
+# make
+# make check
+# make install
+Valgrind 的错误报告
+
+Valgrind 的输出格式如下：
+
+
+清单 1. Valgrind 的输出消息
+
+# valgrind du –x –s
+..
+==29404==  Address 0x1189AD84 is 0 bytes after a block of size 12 alloc'd
+==29404==    at 0xFFB9964: malloc (vg_replace_malloc.c:130)
+==29404==    by 0xFEE1AD0: strdup (in /lib/tls/libc.so.6)
+==29404==    by 0xFE94D30: setlocale (in /lib/tls/libc.so.6)
+==29404==    by 0x10001414: main (in /usr/bin/du)
+==29404== 是进程的 ID。消息 Address 0x1189AD84 is 0 bytes after a block of size 12 alloc'd 说明在这个 12 字节的数组后面没有存储空间了。第二行以及后续几行说明内存是在 130 行（vg_replace_malloc.c）的 strdup() 程序中进行分配的。strdup() 是在 libc.so.6 库的 setlocale() 中调用的；main() 调用了 setlocale()。
+
+未初始化的内存
+
+最为常见的一个 bug 是程序使用了未初始化的内存。未初始化的数据可能来源于：
+
+未经初始化的变量
+malloc 函数所分配的数据，在写入值之前使用了
+下面这个例子使用了一个未初始化的数组：
+
+清单 2. 使用未初始化的内存
+
+      2 {
+      3         int i[5];
+      4 
+      5         if (i[0] == 0)
+      6                 i[1]=1;
+      7         return 0;
+      8 }
+在这个例子中，整数数组 i[5] 没有进行初始化；因此，i[0] 包含的是一个随机数。因此使用 i[0] 的值来判断一个条件分支就会导致不可预期的问题。Valgrind 可以很容易捕获这种错误条件。当您使用 Valgrind 运行这个程序时，就会接收到下面的消息：
+
+清单 3. Valgrind 的输出消息
+
+# gcc –g –o test1 test1.c
+# valgrind ./test1
+.
+.
+==31363== 
+==31363== Conditional jump or move depends on uninitialised value(s)
+==31363==    at 0x1000041C: main (test1.c:5)
+==31363== 
+==31363== ERROR SUMMARY: 1 errors from 1 contexts (suppressed: 7 from 1)
+==31363== malloc/free: in use at exit: 0 bytes in 0 blocks.
+==31363== malloc/free: 0 allocs, 0 frees, 0 bytes allocated.
+==31363== For counts of detected errors, rerun with: -v
+==31363== No malloc'd blocks -- no leaks are possible.
+Valgrind 的输出说明，有一个条件分支依赖于文件 test1.c 中第 5 行中的一个未初始化的变量。
+
+内存泄漏
+
+内 存泄漏是另外一个常见的问题，也是很多程序中最难判断的问题。内存泄漏的主要表现为：当程序连续运行时，与程序相关的内存（或堆）变得越来越大。结果是， 当这个程序所消耗的内存达到系统的上限时，就会自己崩溃；或者会出现更严重的情况：挂起或导致系统崩溃。下面是一个有内存泄漏 bug 的示例程序：
+
+
+清单 4. 内存泄漏示例
+
+      1 int main(void)
+      2 {
+      3         char *p1;
+      4         char *p2;
+      5 
+      6         p1 = (char *) malloc(512);
+      7         p2 = (char *) malloc(512);
+      8 
+      9         p1=p2;
+     10 
+     11         free(p1);
+     12         free(p2);
+     13 }
+上面的代码分别给字符指针 p1 和 p2 分配了两个 512 字节的内存块，然后将指向第一个内存块的指针设置为指向第二个内存块。结果是，第二个内存块的地址丢失了，并导致内存泄漏。在使用 Valgrind 运行这个程序时，会返回如下的消息：
+
+
+清单 5. Valgrind 的输出消息
+
+# gcc –g –o test2 test2.c
+# valgrind ./test2
+.
+.
+==31468== Invalid free() / delete / delete[]
+==31468==    at 0xFFB9FF0: free (vg_replace_malloc.c:152)
+==31468==    by 0x100004B0: main (test2.c:12)
+==31468== Address 0x11899258 is 0 bytes inside a block of size 512 free'd
+==31468==    at 0xFFB9FF0: free (vg_replace_malloc.c:152)
+==31468==    by 0x100004A4: main (test2.c:11)
+==31468== 
+==31468== ERROR SUMMARY: 1 errors from 1 contexts (suppressed: 7 from 1)
+==31468== malloc/free: in use at exit: 512 bytes in 1 blocks.
+==31468== malloc/free: 2 allocs, 2 frees, 1024 bytes allocated.
+==31468== For counts of detected errors, rerun with: -v
+==31468== searching for pointers to 1 not-freed blocks.
+==31468== checked 167936 bytes.
+==31468== 
+==31468== LEAK SUMMARY:
+==31468==    definitely lost: 512 bytes in 1 blocks.
+==31468==      possibly lost: 0 bytes in 0 blocks.
+==31468==    still reachable: 0 bytes in 0 blocks.
+==31468==         suppressed: 0 bytes in 0 blocks.
+==31468== Use --leak-check=full to see details of leaked memory.
+正如您可以看到的一样，Valgrind 报告说这个程序中有 512 字节的内存丢失了。
+
+非法写/读
+
+这种情况发生在程序试图对一个不属于程序本身的内存地址进行读写时。在有些系统上，在发生这种错误时，程序会异常结束，并产生一个段错误。下面这个例子就是一个常见的 bug，它试图读写一个超出数组边界的元素。
+
+
+清单 6. 非法读写
+
+      1 int main() {
+      2         int i, *iw, *ir;
+      3 
+      4         iw = (int *)malloc(10*sizeof(int));
+      5         ir = (int *)malloc(10*sizeof(int));
+      6 
+      7 
+      8         for (i=0; i<11; i++)
+      9                 iw[i] = i;
+     10 
+     11         for (i=0; i<11; i++)
+     12                 ir[i] = iw[i];
+     13 
+     14         free(iw);
+     15         free(ir);
+     16 }
+从这个程序中我们可以看出，对于 iw[10] 和 ir[10] 的访问都是非法的，因为 iw 和 ir 都只有 10 个元素，分别是从 0 到 9。请注意 int iw[10 ] 和 iw = (int *)malloc(10*sizeof(int)) 是等效的 —— 它们都是用来给一个整数数组 iw 分配 10 个元素。
+
+当您使用 Valgrind 运行这个程序时，会返回如下的消息：
+
+
+清单 7. Valgrind 的输出消息
+
+# gcc –g –o test3 test3.c
+# valgrind ./test3
+.
+.
+==31522== Invalid write of size 4
+==31522==    at 0x100004C0: main (test3.c:9)
+==31522==  Address 0x11899050 is 0 bytes after a block of size 40 alloc'd
+==31522==    at 0xFFB9964: malloc (vg_replace_malloc.c:130)
+==31522==    by 0x10000474: main (test10.c:4)
+==31522== 
+==31522== Invalid read of size 4
+==31522==    at 0x1000050C: main (test3.c:12)
+==31522==  Address 0x11899050 is 0 bytes after a block of size 40 alloc'd
+==31522==    at 0xFFB9964: malloc (vg_replace_malloc.c:130)
+==31522==    by 0x10000474: main (test10.c:4)
+==31522== 
+==31522== ERROR SUMMARY: 2 errors from 2 contexts (suppressed: 7 from 1)
+==31522== malloc/free: in use at exit: 0 bytes in 0 blocks.
+==31522== malloc/free: 2 allocs, 2 frees, 84 bytes allocated.
+==31522== For counts of detected errors, rerun with: -v
+==31522== No malloc'd blocks -- no leaks are possible.
+在 test3.c 的第 9 行发现一个非法的 4 字节写操作，在第 12 行发现一个非法的 4 字节读操作。
+
+Valgrind 也可以帮助判断内存误用的问题，例如：
+
+读/写已经释放的内存
+C++ 环境中错误地使用 malloc/new 与 free/delete 的配对
+下面这个列表介绍了 POWER 架构上 Valgrind 的状态：
+
+memcheck 和 addrcheck 工具都可以很好地工作。然而，其他工具还没有进行大量的测试。另外，Helgrind （一个数据竞争的检测程序）在 POWER 上尚不能使用。
+所有的 32 位 PowerPC? 用户模式的指令都可以支持，除了两条非常少用的指令：lswx 和 stswx。具体来说，所有的浮点和 Altivec（VMX）指令都可以支持。
+Valgrind 可以在 32 位或 64 位 PowerPC/Linux 内核上工作，但是只能用于 32 位的可执行程序。
+有关 Valgrind 内存调试的更多信息，请访问 Valgrind HOW TO 站点。还可以参阅 Steve Best 的“Debugging Memory Problems”（Linux Magazine，2003 年 5 月）。参考资料 中有它们的链接
+
+除了 Valgrind 之外，还可以使用其他几个内存调试工具；例如，Memwatch 和 Electric Fence。
