@@ -18,3 +18,66 @@ function callme($day,$str)
 {
         echo $str.": ".$day."/n";
 }
+=========================================================
+
+PHP_FUNCTION(md52)
+{
+	zval **strtomd5;
+	if((ZEND_NUM_ARGS() != 1) || (zend_get_parameters_ex(1, &strtomd5) != SUCCESS))
+	{
+	   WRONG_PARAM_COUNT;
+	}
+
+	zend_fcall_info fci;
+	zend_fcall_info_cache fcic = empty_fcall_info_cache;
+	zval *funname,*ret_ptr = NULL;
+	MAKE_STD_ZVAL(funname);
+	ZVAL_STRING(funname, "md5", 1); 
+	zval **param[1];
+
+	param[0] = strtomd5;
+	call_user_function_ex(EG(function_table), NULL, funname, &ret_ptr, 1, param, 0, EG(active_symbol_table));
+	//call_user_function_ex(EG(function_table), NULL, funname, &ret_ptr, 1, param, 0, NULL);
+
+	zval *new_variable;
+
+	MAKE_STD_ZVAL(new_variable);
+	ZVAL_LONG(new_variable,317);
+	ZEND_SET_SYMBOL(&EG(symbol_table), "new_variable_name", new_variable);
+
+	RETVAL_ZVAL(ret_ptr, 1, 0);
+	
+
+	zval_ptr_dtor(&funname);
+	MAKE_STD_ZVAL(funname);
+	
+	ZVAL_STRING(funname, "gg", 1); 
+
+	char *string_contents = "new_variable_name";
+	zval *var_name;
+	MAKE_STD_ZVAL(var_name);
+
+	ZVAL_STRING(var_name, string_contents, 1); 	
+	
+	zend_printf("c_ext *strtomd5 = %s, func=%s\n", var_name->value.str.val , funname->value.str.val);
+
+	param[0] = &var_name;	
+
+	
+	if(call_user_function_ex(EG(function_table), NULL, funname, &ret_ptr, 1, param, 0, EG(active_symbol_table)) != SUCCESS)
+	{
+	   zend_error(E_ERROR, "Function call failed");
+	}
+
+	zend_printf("c_ext new_variable = %d\n", new_variable->value.lval);
+	efree(funname);
+	efree(var_name);
+	
+}
+
+<?php
+
+echo md52('123qwe');
+
+?>
+================================================================================
