@@ -1,0 +1,84 @@
+最近几天看了一下《SQL Injection Attacks and Defense》，并对学校的网站做了一下测试，发现学校的网站真是漏洞百出。同时也发现，在ASP、ASP.NET、JSP、PHP等常见服务端中
+PHP中的SQL注入漏洞是最少的（至少我们学校的是这样）。
+
+这也没什么好奇怪的，稍有常识的人都知道，PHP配置文件中有一个magic_quotes_gpc选项，默认为on，
+会对$_GET、$_POST、$_COOKIE进行addslashes处理，把敏感字符过滤掉。
+这样，即使是一个没有安全意识的新手写出来的代码，也不太容易出现SQL注入。
+
+所以特意在PHP的C源码中搜索了一下阻碍我SQL注入的“罪魁祸首”addslashes函数的实现
+在PHP源码的ext/standard/string.c中，我稍微整理了一下：
+
+
+    #include <stdio.h>
+    #include <stdlib.h>
+    #include <string.h>
+
+    /***********************************
+    Author  : Demon
+    Website : http://demon.tw
+    E-mail  : 380401911@qq.com
+    ***********************************/
+
+    /* {{{ proto string addslashes(string str)
+       Escapes single quote, double quotes and backslash characters in a string with backslashes */
+    char *addslashes(char *str)
+    {
+        /* maximum string length, worst case situation */
+        char *new_str;
+        char *source, *target;
+        char *end;
+        int new_length;
+        int length = strlen(str);
+
+        if (length == 0) {
+            char *p = (char *) malloc(1);
+            if (p == NULL) {
+                return p;
+            }
+            p[0] = 0;
+            return p;
+        }
+
+        new_str = (char *) malloc(2 * length + 1);
+        if (new_str == NULL) {
+            return new_str;
+        }
+        source = str;
+        end = source + length;
+        target = new_str;
+        
+        while (source < end) {
+            switch (*source) {
+                case '\0':
+                    *target++ = '\\';
+                    *target++ = '0';
+                    break;
+                case '\'':
+                case '\"':
+                case '\\':
+                    *target++ = '\\';
+                    /* break is missing *intentionally* */
+                default:
+                    *target++ = *source;
+                    break;
+            }
+            source++;
+        }
+        
+        *target = 0;
+        new_length = target - new_str;
+        new_str = (char *) realloc(new_str, new_length + 1);
+        return new_str;
+    }
+    /* }}} */
+
+    int main()
+    {
+        char *str = addslashes("Is your name O'reilly?");
+        printf("%s\n", str);
+        free(str);
+        return 0;
+    }
+
+顺便提一下，magic_quotes_gpc这个选项在PHP5.3中已经不推荐使用，并将在PHP6的时候移除。
+所以不要依赖于这个选项，该过滤的字符还是得自己过滤掉。
