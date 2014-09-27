@@ -1,3 +1,9 @@
+function_table is the hash table where the function you wish to call is located. 
+If you're using object_pp, set this to NULL. If the function is global, most likely it's located in the hash table returned by the macro CG() with the parameter `function_table\', i.e.
+CG(function_table)
+
+http://www.kankanews.com/ICkengine/archives/68518.shtml
+
 Here's an example calling a global function with no parameters:
 
 PHP_FUNCTION(example_call_func){  
