@@ -1,0 +1,37 @@
+Here's an example calling a global function with no parameters:
+
+PHP_FUNCTION(example_call_func){  
+    zval *function;  
+    MAKE_STD_ZVAL(function);  
+    ZVAL_STRING(function, "example_usermode_function", 1);  
+    if(call_user_function_ex(CG(function_table), NULL, function, &return_value, 0, NULL, 0, NULL TSRMLS_CC) != FAILURE)    
+        return;  
+    else    
+        RETURN_FALSE;
+}
+
+Now the same example with 1 parameter being passed to the usermode function:
+
+PHP_FUNCTION(example_call_func){  
+    zval *function, *num;  zval **params[1]; // Creates array of parameters with 1 element allocated.  
+    MAKE_STD_ZVAL(function);  
+    MAKE_STD_ZVAL(num);  
+    ZVAL_STRING(function, "example_usermode_function", 1); 
+    ZVAL_LONG(num, 15);  params[0] = num; // Makes num the first parameter to example_usermode_function().  
+    if(call_user_function_ex(CG(function_table), NULL, function, &return_value, 1, params, 0, NULL TSRMLS_CC) != FAILURE)    return;  
+    else    RETURN_FALSE;
+
+}
+
+
+And now an example taking an object and method name as parameters and calling the method:
+
+PHP_FUNCTION(example_call_func){  
+  zval *object, *method;  
+  if(zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "zz", &object, &method) == FAILURE)  {    
+    zend_error(E_WARNING, "You must pass an object and a method name to example_call_func");    
+    return;  
+    }  
+    if(call_user_function_ex(NULL, &object, method, &return_value, 0, NULL, 0, NULL TSRMLS_CC) != FAILURE)    return;  
+    else    RETURN_FALSE;
+}
