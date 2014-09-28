@@ -1,0 +1,40 @@
+#include<stdio.h>
+#include<stdlib.h>
+ 
+typedef struct A {
+    double a ; 
+    double b ; 
+}*ptr ; 
+ 
+void add(ptr &z1,ptr &z2) {
+    ptr p ;
+    p -> a = z1 -> a + z2 -> a ;
+    p -> b = z1 -> b + z2 -> b ; 
+    printf("%f+%fi\n",p -> a,p -> b );
+}
+ 
+int main(void) {
+    ptr z1 ; 
+    ptr z2 ;
+    scanf("%f%f",&z1->a,&z1->b);
+    scanf("%f%f",&z2->a,&z2->b);
+    add(z1,z2) ; 
+    system("pause") ; 
+    return 1 ;
+}
+==================================
+
+  ptr z1 ;
+    ptr z2 ;
+
+这两个没分配内存就直接用了
+
+指针需要初始化！！！为何不看看编译警告呢？
+
+还有void add(ptr &z1,ptr &z2)在c++里才是合法的吧？
+
+z1,z2要初始化。你用的什么编译器？把编译警告全打开，生活会舒畅一些的。 (3 天 前)  
+初始化？是p吗？我初始化了可是还不行啊 恩 我用的是C++ 抱歉 。。。 编译没有提示·
+
+
+z1, z2 没有开辟内存
